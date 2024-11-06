@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Extension Settings</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      width: 300px;
+      margin: 0 auto;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin: 10px 0;
+    }
+    button {
+      padding: 8px 12px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Extension Settings</h1>
+    <form id="settings-form">
+      <label for="url-mask">URL Mask (Regex):</label>
+      <input type="text" id="url-mask" name="url-mask" placeholder="example.com">
+      <button type="submit">Save</button>
+    </form>
+  </div>
+
+  <button id="export">Export JSON</button>
+  <button id="import">Import JSON</button>
+  <input type="file" id="fileInput" style="display:none;" accept="application/json">
+
+  <script src="options.js"></script>
+</body>
+</html>

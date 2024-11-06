@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Cycle Through Links and Save MHTML",
+  "version": "1.0",
+  "description": "Cycle through all links that match a URL mask, saving each page as MHTML without revisiting.",
+  "permissions": ["activeTab", "scripting", "downloads", "pageCapture", "storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Start Cycle"
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}

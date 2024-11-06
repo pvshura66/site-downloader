@@ -5,3 +5,4 @@ This Chrome extension navigates a specified web site and saves all visited pages
 3. Open extension options and add a regex site mask for instance "wiki.*((/pages/viewpage.action)|(/display/[^~]))' 
 4. Open your website and click on 'Start Cycle' extension button
 You may click in multiple tabs and they will work together
+You may export, edit and import the lists of visited URLs and URLs to visit through extension options. You will need to reopen the browser or reload the extension to apply this setting.

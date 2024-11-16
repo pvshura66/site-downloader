@@ -2,6 +2,7 @@ importScripts('md5.js');
 
 let visitedUrls = new Set();  // Store URLs that have already been visited
 let linksToVisit = new Set();  // Store links to visit next
+let linksToSkip = new Set();  // Visit but do not save
 let runningLinks = new Set();
 let counter = 0;
 
@@ -41,7 +42,7 @@ function savePageAsMHTML(tabId, url) {
 
 async function exportSettings(){
 //  lock();
-  settings = { 'visitedUrls': Array.from( visitedUrls ), 'linksToVisit': Array.from( linksToVisit )};
+  settings = { 'visitedUrls': Array.from( visitedUrls ), 'linksToVisit': Array.from( linksToVisit ), 'linksToSkip': Array.from( linksToSkip )};
 //  unlock();
   const dataStr = JSON.stringify(settings, null, 2);
   const blob = new Blob([dataStr], { type: 'application/json' });
@@ -74,7 +75,7 @@ function getNewLinksFromPage(currentTabId, mask) {
 }
 
 // Function to navigate to a new URL and wait for page to load using Promises
-function navigateAndWaitForLoad(tabId, url, urlMask) {
+function navigateAndWaitForLoad(tabId, url, urlMask, paramList) {
     chrome.tabs.update(tabId, { url: url });
 
     // Listen for the tab update event to check if the page has finished loading
@@ -83,7 +84,7 @@ function navigateAndWaitForLoad(tabId, url, urlMask) {
         if (updatedTabId === tabId && changeInfo.status === 'complete') {
             // Remove the listener once the page is fully loaded
             chrome.tabs.onUpdated.removeListener(listener);
-            visitNextLink(url, tabId, urlMask);
+            visitNextLink(url, tabId, urlMask, paramList);
         }
     }
 
@@ -91,9 +92,8 @@ function navigateAndWaitForLoad(tabId, url, urlMask) {
     chrome.tabs.onUpdated.addListener(listener);
 }
 
-function cleanUrl(link) {
+function cleanUrl(link, params_delete) {
   const new_url = new URL(link);
-  const params_delete = ["src", "focusedCommentId", "showCommentArea", "showComments", "amp;focusedCommentId"];
   for( const param of params_delete ) {
     new_url.searchParams.delete(param);
   }
@@ -102,22 +102,26 @@ function cleanUrl(link) {
 }
 
 // Function to visit all links and save the pages
-async function visitNextLink(currentUrl, currentTabId, urlMask) {  
+async function visitNextLink(currentUrl, currentTabId, urlMask, paramList) {  
   let url = currentUrl; // clean twice
   console.log(url);
 
   let newLinks = null;
   try {
-    const results = await Promise.all([savePageAsMHTML(currentTabId, url), getNewLinksFromPage(currentTabId, urlMask)]);
-    newLinks = results[1];
+    if( linksToSkip.has(url)){ // Do not save
+      newLinks = await getNewLinksFromPage(currentTabId, urlMask);
+    } else {
+      const results = await Promise.all([getNewLinksFromPage(currentTabId, urlMask), savePageAsMHTML(currentTabId, url)]);
+      newLinks = results[0];
+    }
   } catch(error) {
     console.error(error);
-    navigateAndWaitForLoad(currentTabId, url, urlMask);
+    navigateAndWaitForLoad(currentTabId, url, urlMask, paramList);
     return;
   }
 
   newLinks.forEach((link, index, array) => {
-    array[index] = cleanUrl(link);
+    array[index] = cleanUrl(link, paramList);
   });
 
   // Add new links without duplicates, Filter out already visited links
@@ -136,11 +140,7 @@ async function visitNextLink(currentUrl, currentTabId, urlMask) {
 
     for( let url of linksToVisit ) {
       try {
-        new_url = cleanUrl(url);
-//        if( visitedUrls.has(new_url)) {
-//          linksToVisit.delete(url);
-//          continue;
-//        }
+        new_url = cleanUrl(url, paramList);
         if( !runningLinks.has(new_url)) {
             if( new_url !== url ){
               linksToVisit.delete(url);
@@ -148,7 +148,7 @@ async function visitNextLink(currentUrl, currentTabId, urlMask) {
               url = new_url;
             }
             runningLinks.add(url);
-          navigateAndWaitForLoad(currentTabId, url, urlMask);
+          navigateAndWaitForLoad(currentTabId, url, urlMask, paramList);
           return; // Navigate to the next link after saving
         }
       } catch (error) {
@@ -177,18 +177,22 @@ function readStorage(storage, key) {
 chrome.action.onClicked.addListener(async (tab) => {
     try {
       // Retrieve the URL mask from storage
-      let urlMask = await readStorage( chrome.storage.sync, "urlMask" ) || "example.com";  // Use the saved mask or a default mask
+      const results = await Promise.all([readStorage( chrome.storage.sync, "urlMask" ), readStorage( chrome.storage.sync, "paramList" )]);
+      let urlMask = results[0] || "*";  // Use the saved mask or a default mask
+      let paramList = results[1].split(',').map(element => element.replace(/"/g, ''));
       await lock();
       if( counter === 0 ) {
-        visitedUrls = new Set( await readStorage( chrome.storage.local, "visitedUrls" ));
-        linksToVisit = new Set( await readStorage( chrome.storage.local, "linksToVisit" ));
+        const results = await Promise.all([readStorage( chrome.storage.local, "visitedUrls" ), readStorage( chrome.storage.local, "linksToVisit" ), readStorage( chrome.storage.local, "linksToSkip" )]);
+        visitedUrls = new Set(results[0]);
+        linksToVisit = new Set(results[1]);
+        linksToSkip = new Set(results[2]);
       }
       let pct = ( visitedUrls.size + linksToVisit.size > 0 ) ? visitedUrls.size / ( visitedUrls.size + linksToVisit.size ) * 100 : 100;
       let sz = linksToVisit.size;
       unlock();
       console.warn('# %s percent complete, %d links left', pct.toFixed(2), sz );
 
-      visitNextLink( tab.url, tab.id, urlMask );  // Start visiting links
+      visitNextLink( tab.url, tab.id, urlMask, paramList );  // Start visiting links
     } catch(error) {
       console.error(error);
     }

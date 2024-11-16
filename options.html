@@ -30,14 +30,15 @@
     <form id="settings-form">
       <label for="url-mask">URL Mask (Regex):</label>
       <input type="text" id="url-mask" name="url-mask" placeholder="example.com">
+      <label for="names">Parameters to ignore (comma-separated):</label>
+      <input type="text" id="params" name="params"><br><br>
       <button type="submit">Save</button>
     </form>
+
+    <button id="export">Export JSON</button>
+    <button id="import">Import JSON</button>
+    <input type="file" id="fileInput" style="display:none;" accept="application/json">
   </div>
-
-  <button id="export">Export JSON</button>
-  <button id="import">Import JSON</button>
-  <input type="file" id="fileInput" style="display:none;" accept="application/json">
-
   <script src="options.js"></script>
 </body>
 </html>

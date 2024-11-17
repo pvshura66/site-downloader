@@ -179,7 +179,7 @@ chrome.action.onClicked.addListener(async (tab) => {
       // Retrieve the URL mask from storage
       const results = await Promise.all([readStorage( chrome.storage.sync, "urlMask" ), readStorage( chrome.storage.sync, "paramList" )]);
       let urlMask = results[0] || "*";  // Use the saved mask or a default mask
-      let paramList = results[1].split(',').map(element => element.replace(/"/g, ''));
+      let paramList = results[1].split(',').map(element => element.replace(/['"\s]/g, ''));
       await lock();
       if( counter === 0 ) {
         const results = await Promise.all([readStorage( chrome.storage.local, "visitedUrls" ), readStorage( chrome.storage.local, "linksToVisit" ), readStorage( chrome.storage.local, "linksToSkip" )]);
